@@ -17,6 +17,7 @@ package com.google.firebase.codelab.friendlychat;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
@@ -132,8 +133,8 @@ public class MainActivity extends AppCompatActivity
         //mUsername = ANONYMOUS;
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
-                .addApi(Auth.GOOGLE_SIGN_IN_API)
+                .addApi(AppInvite.API)
+                .enableAutoManage(this, this)
                 .build();
 
         // Initialize ProgressBar and RecyclerView.
@@ -284,6 +285,9 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
+            case R.id.invite_menu:
+                sendInvitation();
+                return true;
             case R.id.fresh_config_menu:
                 fetchConfig();
                 return true;
@@ -298,11 +302,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        // An unresolvable error has occurred and Google APIs (including Sign-In) will not
-        // be available.
+    public void onConnectionFailed(ConnectionResult connectionResult) {
         Log.d(TAG, "onConnectionFailed:" + connectionResult);
-        Toast.makeText(this, "Google Play Services error.", Toast.LENGTH_SHORT).show();
     }
 
     // Fetch the config to determine the allowed length of messages.
@@ -349,4 +350,34 @@ public class MainActivity extends AppCompatActivity
                 InputFilter.LengthFilter(friendly_msg_length.intValue())});
         Log.d(TAG, "FML is: " + friendly_msg_length);
     }
+
+    private void sendInvitation() {
+        Intent intent = new AppInviteInvitation.IntentBuilder(getString(R.string.invitation_title))
+                .setMessage(getString(R.string.invitation_message))
+                .setCallToActionText(getString(R.string.invitation_cta))
+                .build();
+        startActivityForResult(intent, REQUEST_INVITE);
+
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Log.d(TAG, "onActivityResult: requestCode=" + requestCode +
+                ", resultCode=" + resultCode);
+
+        if (requestCode == REQUEST_INVITE) {
+            if (resultCode == RESULT_OK) {
+                // Check how many invitations were sent.
+                String[] ids = AppInviteInvitation
+                        .getInvitationIds(resultCode, data);
+                Log.d(TAG, "Invitations sent: " + ids.length);
+            } else {
+                // Sending failed or it was canceled, show failure message to
+                // the user
+                Log.d(TAG, "Failed to send invitation.");
+            }
+        }
+    }
+
 }
